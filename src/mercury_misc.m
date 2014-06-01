@@ -9,6 +9,7 @@
 :- interface.
 
 :- import_module string_reader.
+:- import_module coloured_pretty_printer.
 
 %-----------------------------------------------------------------------------%
 :- end_module mercury_misc.
