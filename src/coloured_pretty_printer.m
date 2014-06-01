@@ -72,7 +72,7 @@
 %
 
 :- type term_colour
-    ---> ansi(ansi_colour)
+    ---> ansi(ansi_colour, ansi_attrib)
     ;    xterm(xterm_colour).
 
 :- type ansi_colour
@@ -85,6 +85,11 @@
     ;    cyan
     ;    white.
 
+:- type ansi_attrib
+    ---> none
+    ;    normal
+    ;    bright_or_bold.
+
 :- instance enum(ansi_colour).
 
 :- type xterm_colour == int.
@@ -95,47 +100,67 @@
 
 :- func bg(term_colour, doc) = doc.
 
+:- func underlined(doc) = doc.
+
+:- func overlined(doc) = doc.
+
 %----------------------------------------------------------------------------%
 %
-% Convenience functions for setting the foreground colour
+% Convenience functions for setting the foreground colour (ANSI only)
 %
 
 :- func black_fg(doc) = doc.
 
+:- func darkgrey_fg(doc) = doc.
+
+:- func darkred_fg(doc) = doc.
+
 :- func red_fg(doc) = doc.
+
+:- func darkgreen_fg(doc) = doc.
 
 :- func green_fg(doc) = doc.
 
+:- func orange_fg(doc) = doc.
+
 :- func yellow_fg(doc) = doc.
+
+:- func darkblue_fg(doc) = doc.
 
 :- func blue_fg(doc) = doc.
 
+:- func darkmagenta_fg(doc) = doc.
+
 :- func magenta_fg(doc) = doc.
 
+:- func darkcyan_fg(doc) = doc.
+
 :- func cyan_fg(doc) = doc.
+
+:- func grey_fg(doc) = doc.
 
 :- func white_fg(doc) = doc.
 
 %----------------------------------------------------------------------------%
 %
-% Convenience functions for setting the background colour
+% Convenience functions for setting the background colour (ANSI only)
 %
 
 :- func black_bg(doc) = doc.
 
-:- func red_bg(doc) = doc.
+:- func darkred_bg(doc) = doc.
 
-:- func green_bg(doc) = doc.
+:- func darkgreen_bg(doc) = doc.
 
-:- func yellow_bg(doc) = doc.
+:- func orange_bg(doc) = doc.
 
-:- func blue_bg(doc) = doc.
+:- func darkblue_bg(doc) = doc.
 
-:- func magenta_bg(doc) = doc.
+:- func darkmagenta_bg(doc) = doc.
 
-:- func cyan_bg(doc) = doc.
+:- func darkcyan_bg(doc) = doc.
 
-:- func white_bg(doc) = doc.
+:- func grey_bg(doc) = doc.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -198,10 +223,27 @@ ansi_colour_code(magenta, 5).
 ansi_colour_code(cyan, 6).
 ansi_colour_code(white, 7).
 
+%----------------------------------------------------------------------------%
+
 :- instance enum(xterm_colour) where [
     (to_int(C) = C),
     (from_int(C) = C :- C =< 0xff)
 ].
+
+%----------------------------------------------------------------------------%
+
+:- instance enum(ansi_attrib) where [
+    (to_int(Attrib) = Code   :- ansi_attrib_code(Attrib, Code)),
+    (from_int(Code) = Attrib :- ansi_attrib_code(Attrib, Code))
+].
+
+:- pred ansi_attrib_code(ansi_attrib, int).
+:- mode ansi_attrib_code(in, out) is det.
+:- mode ansi_attrib_code(out, in) is semidet.
+
+ansi_attrib_code(none, -1).
+ansi_attrib_code(normal, 0).
+ansi_attrib_code(bright_or_bold, 1).
 
 %----------------------------------------------------------------------------%
 %
@@ -209,8 +251,8 @@ ansi_colour_code(white, 7).
 %
 
 fg(TermColour, Doc) =
-    ( TermColour = ansi(Ansi) ->
-        ansi_colour_escape(30, Ansi, Doc)
+    ( TermColour = ansi(ColourCode, Attrib) ->
+        ansi_colour_escape(30, ColourCode, Attrib, Doc)
     ; TermColour = xterm(_XTerm) ->
         unexpected($file, $pred, "XTerm colours not supported yet")
     ;
@@ -218,63 +260,99 @@ fg(TermColour, Doc) =
     ).
 
 bg(TermColour, Doc) =
-    ( TermColour = ansi(Ansi) ->
-        ansi_colour_escape(40, Ansi, Doc)
+    ( TermColour = ansi(ColourCode, Attrib) ->
+        ansi_colour_escape(40, ColourCode, Attrib, Doc)
     ; TermColour = xterm(_XTerm) ->
         unexpected($file, $pred, "XTerm colours not supported yet")
     ;
         unexpected($file, $pred, "term colour type not supported")
     ).
 
-:- func ansi_colour_escape(int, ansi_colour, doc) = doc.
+:- func ansi_colour_escape(int, ansi_colour, ansi_attrib,  doc) = doc.
 
-ansi_colour_escape(Offset, Ansi, Doc) =
-    docs([str(format("\u001b[%dm", [i(Offset + to_int(Ansi))])),
+ansi_colour_escape(Offset, Ansi, Attrib, Doc) =
+    docs([( if Attrib = none then
+               ansi_sgr(Offset + to_int(Ansi))
+            else
+               ansi_sgr2(to_int(Attrib), Offset + to_int(Ansi))
+          ),
           Doc,
-          str(format("\u001b[%dm", [i(Offset + 9)]))
-         ]).
+          ansi_sgr(0)]).
+
+underlined(Doc) = ansi_escape_tag(4, 24, Doc).
+
+overlined(Doc) = ansi_escape_tag(53, 55, Doc).
+
+:- func ansi_escape_tag(int, int, doc) = doc.
+
+ansi_escape_tag(Start, End, Doc) =
+    docs([ansi_sgr(Start), Doc, ansi_sgr(End)]).
+
+:- func ansi_sgr(int) = doc.
+
+ansi_sgr(Code) = str(format("\u001b[%dm", [i(Code)])).
+
+:- func ansi_sgr2(int, int) = doc.
+
+ansi_sgr2(Attrib, Code) = str(format("\u001b[%d;%dm", [i(Attrib), i(Code)])).
 
 %----------------------------------------------------------------------------%
 %
-% Implementation of foreground colour conventience functions
+% Implementation of foreground colour conventience functions (ANSI only)
 %
 
-black_fg(Doc) = fg(ansi(black), Doc).
+black_fg(Doc) = fg(ansi(black, normal), Doc).
 
-red_fg(Doc) = fg(ansi(red), Doc).
+darkgrey_fg(Doc) = fg(ansi(black, bright_or_bold), Doc).
 
-green_fg(Doc) = fg(ansi(green), Doc).
+darkred_fg(Doc) = fg(ansi(red, normal), Doc).
 
-yellow_fg(Doc) = fg(ansi(yellow), Doc).
+red_fg(Doc) = fg(ansi(red, bright_or_bold), Doc).
 
-blue_fg(Doc) = fg(ansi(blue), Doc).
+darkgreen_fg(Doc) = fg(ansi(green, normal), Doc).
 
-magenta_fg(Doc) = fg(ansi(magenta), Doc).
+green_fg(Doc) = fg(ansi(green, bright_or_bold), Doc).
 
-cyan_fg(Doc) = fg(ansi(cyan), Doc).
+orange_fg(Doc) = fg(ansi(yellow, normal), Doc).
 
-white_fg(Doc) = fg(ansi(white), Doc).
+yellow_fg(Doc) = fg(ansi(yellow, bright_or_bold), Doc).
+
+darkblue_fg(Doc) = fg(ansi(blue, normal), Doc).
+
+blue_fg(Doc) = fg(ansi(blue, bright_or_bold), Doc).
+
+darkmagenta_fg(Doc) = fg(ansi(magenta, normal), Doc).
+
+magenta_fg(Doc) = fg(ansi(magenta, bright_or_bold), Doc).
+
+darkcyan_fg(Doc) = fg(ansi(cyan, normal), Doc).
+
+cyan_fg(Doc) = fg(ansi(cyan, bright_or_bold), Doc).
+
+grey_fg(Doc) = fg(ansi(white, normal), Doc).
+
+white_fg(Doc) = fg(ansi(white, bright_or_bold), Doc).
 
 %----------------------------------------------------------------------------%
 %
-% Implementation of background colour conventience functions
+% Implementation of background colour conventience functions (ANSI only)
 %
 
-black_bg(Doc) = bg(ansi(black), Doc).
+black_bg(Doc) = bg(ansi(black, none), Doc).
 
-red_bg(Doc) = bg(ansi(red), Doc).
+darkred_bg(Doc) = bg(ansi(red, none), Doc).
 
-green_bg(Doc) = bg(ansi(green), Doc).
+darkgreen_bg(Doc) = bg(ansi(green, none), Doc).
 
-yellow_bg(Doc) = bg(ansi(yellow), Doc).
+orange_bg(Doc) = bg(ansi(yellow, none), Doc).
 
-blue_bg(Doc) = bg(ansi(blue), Doc).
+darkblue_bg(Doc) = bg(ansi(blue, none), Doc).
 
-magenta_bg(Doc) = bg(ansi(magenta), Doc).
+darkmagenta_bg(Doc) = bg(ansi(magenta, none), Doc).
 
-cyan_bg(Doc) = bg(ansi(cyan), Doc).
+darkcyan_bg(Doc) = bg(ansi(cyan, none), Doc).
 
-white_bg(Doc) = bg(ansi(white), Doc).
+grey_bg(Doc) = bg(ansi(white, none), Doc).
 
 %----------------------------------------------------------------------------%
 :- end_module coloured_pretty_printer.
