@@ -92,7 +92,8 @@
 
 :- instance enum(ansi_colour).
 
-:- type xterm_colour == int.
+:- type xterm_colour
+    ---> xterm_colour(int).
 
 :- instance enum(xterm_colour).
 
@@ -226,8 +227,8 @@ ansi_colour_code(white, 7).
 %----------------------------------------------------------------------------%
 
 :- instance enum(xterm_colour) where [
-    (to_int(C) = C),
-    (from_int(C) = C :- C =< 0xff)
+    (to_int(xterm_colour(C)) = C),
+    (from_int(C) = xterm_colour(C) :- C =< 0xff)
 ].
 
 %----------------------------------------------------------------------------%
