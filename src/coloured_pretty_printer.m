@@ -105,6 +105,8 @@
 
 :- func overlined(doc) = doc.
 
+:- func colour_on_black(term_colour, doc) = doc.
+
 %----------------------------------------------------------------------------%
 %
 % Convenience functions for setting the foreground colour (ANSI only)
@@ -170,6 +172,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module std_util.
 :- import_module string.
 
 %----------------------------------------------------------------------------%
@@ -296,6 +299,19 @@ ansi_sgr(Code) = str(format("\u001b[%dm", [i(Code)])).
 :- func ansi_sgr2(int, int) = doc.
 
 ansi_sgr2(Attrib, Code) = str(format("\u001b[%d;%dm", [i(Attrib), i(Code)])).
+
+%----------------------------------------------------------------------------%
+
+colour_on_black(ForeColour, Doc) = ColouredDoc :-
+    FgAndBg = compose(
+        ( ForeColour = ansi(black, normal) ->
+            white_fg
+        ;
+            fg(ForeColour)
+        ),
+        black_bg
+    ),
+    ColouredDoc = FgAndBg(Doc).
 
 %----------------------------------------------------------------------------%
 %
