@@ -300,18 +300,27 @@ ansi_sgr(Code) = str(format("\u001b[%dm", [i(Code)])).
 
 ansi_sgr2(Attrib, Code) = str(format("\u001b[%d;%dm", [i(Attrib), i(Code)])).
 
+:- func ansi_sgr3(int, int, int) = doc.
+
+ansi_sgr3(Attrib, Fg, Bg) =
+    str(format("\u001b[%d;%d;%dm", [i(Attrib), i(Fg), i(Bg)])).
+
 %----------------------------------------------------------------------------%
 
-colour_on_black(ForeColour, Doc) = ColouredDoc :-
-    FgAndBg = compose(
-        ( ForeColour = ansi(black, normal) ->
-            white_fg
+colour_on_black(ForeColour, Doc) = Docs :-
+    ( ForeColour = ansi(Fg0, Attrib0) ->
+        ( Fg0 = black, Attrib0 = normal ->
+            Fg = white, Attrib = bright_or_bold
         ;
-            fg(ForeColour)
+            Fg = Fg0, Attrib = Attrib0
         ),
-        black_bg
-    ),
-    ColouredDoc = FgAndBg(Doc).
+        FgBgSgr = ansi_sgr3(to_int(Attrib),
+                            30 + to_int(Fg),
+                            40 + to_int(black)),
+        Docs = docs([FgBgSgr, Doc, ansi_sgr(0)])
+    ;
+        unexpected($file, $module, "Only ANSI colours are supported yet")
+    ).
 
 %----------------------------------------------------------------------------%
 %
