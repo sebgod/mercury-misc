@@ -25,6 +25,7 @@
 
 :- func init = charset.
 :- func union(charset, charset) = charset.
+:- pred is_in_charset(char::in, charset::in) is semidet.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -56,6 +57,8 @@ charset_from_range(Range) =
 init = sparse_bitset.init.
 
 union(A, B) = sparse_bitset.union(A, B).
+
+is_in_charset(Char, Charset) :- member(Char, Charset).
 
 %----------------------------------------------------------------------------%
 % -*- Mode: Mercury; column: 80; indent-tabs-mode: nil; tabs-width: 4 -*-
