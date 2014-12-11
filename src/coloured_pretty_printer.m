@@ -5,6 +5,7 @@
 % Copyright © 2014 Sebastian Godelet
 % Main author: Sebastian Godelet <sebastian.godelet+github@gmail.com>
 % Created on: Mon May 12 16:03:06 CEST 2014
+%----------------------------------------------------------------------------%
 %
 % Pretty print routines for ISO/IEC 6429 colourised output
 % See: https://en.wikipedia.org/wiki/ANSI_escape_code
