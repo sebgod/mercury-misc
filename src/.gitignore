@@ -6,6 +6,8 @@ Mercury/
 *.exe
 *.a
 *.so
+*.jar
+mercury.snk
 *.dylib
 *.d
 *.c_date
